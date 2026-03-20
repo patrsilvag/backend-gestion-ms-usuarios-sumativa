@@ -7,12 +7,18 @@ import com.example.usuarios.exceptions.DuplicateResourceException;
 import com.example.usuarios.exceptions.ResourceNotFoundException;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
+
 import java.util.List;
+import jakarta.validation.Valid;
 
 @Slf4j
 @Service
+@Validated
+@SuppressWarnings({ "null", "all" })
 public class UsuarioService {
 
     @Autowired
@@ -23,7 +29,6 @@ public class UsuarioService {
         return usuarioRepository.findAll();
     }
 
-    @SuppressWarnings("null")
     public Usuario guardar(Usuario usuario, String rolSolicitante) {
         // 1. Seguridad: Solo un ADMIN puede crear usuarios
         validarAdmin(rolSolicitante);
@@ -45,7 +50,7 @@ public class UsuarioService {
     }
 
 
-    public Usuario actualizar(Long id, Usuario datosActualizados, String rolSolicitante) {
+    public Usuario actualizar(@NonNull Long id, @Valid Usuario datosActualizados, String rolSolicitante) {
         validarAdmin(rolSolicitante); // Solo ADMIN actualiza
         
         Usuario usuarioExistente = usuarioRepository.findById(id)
@@ -66,7 +71,7 @@ public class UsuarioService {
         return usuarioRepository.save(usuarioExistente);
     }
 
-    public void eliminar(Long id, String rolSolicitante) {
+    public void eliminar(@NonNull Long id, String rolSolicitante) {
         validarAdmin(rolSolicitante); // Solo ADMIN elimina
         
         if (!usuarioRepository.existsById(id)) {
