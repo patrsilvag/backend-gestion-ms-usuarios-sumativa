@@ -34,6 +34,7 @@ public class Usuario {
 
     @Email(message = "Debe ser un formato de correo válido")
     @NotBlank(message = "El email es obligatorio")
+    @Column(unique = true)
     private String email;
 
     @NotBlank(message = "La contraseña es obligatoria")

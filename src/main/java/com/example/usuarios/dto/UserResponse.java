@@ -1,10 +1,15 @@
 package com.example.usuarios.dto;
 
-// UserResponse.java
-public record UserResponse(
-    Long id,
-    String nombreUsuario,
-    String email,
-    String rol
-) {
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserResponse {
+    private Long id;
+    private String nombreUsuario;
+    private String email;
+    private String rol; // Lo enviamos como String para facilitar la lectura
 }

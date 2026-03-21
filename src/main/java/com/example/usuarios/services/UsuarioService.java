@@ -1,18 +1,16 @@
 package com.example.usuarios.services;
 
 import com.example.usuarios.models.Usuario;
+import com.example.usuarios.dto.*;
 import com.example.usuarios.repositories.UsuarioRepository;
-import com.example.usuarios.exceptions.AccesoDenegadoException;
-import com.example.usuarios.exceptions.DuplicateResourceException;
-import com.example.usuarios.exceptions.ResourceNotFoundException;
-
+import com.example.usuarios.exceptions.*;
 import lombok.extern.slf4j.Slf4j;
 import lombok.NonNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-
 import java.util.List;
+import java.util.stream.Collectors;
 import jakarta.validation.Valid;
 
 @Slf4j
@@ -24,61 +22,71 @@ public class UsuarioService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    public List<Usuario> listarTodos() {
-        log.info("Service: Listando todos los usuarios");
-        return usuarioRepository.findAll();
+    // --- Lógica de Login (Requerimiento #30) ---
+    public UserResponse login(@Valid LoginRequest request) {
+        log.info("Service: Intento de login para {}", request.getEmail());
+        Usuario user = usuarioRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new AccesoDenegadoException("Credenciales incorrectas"));
+
+        if (!user.getPassword().equals(request.getPassword())) {
+            throw new AccesoDenegadoException("Credenciales incorrectas");
+        }
+        return convertToResponse(user);
     }
 
-    public Usuario guardar(Usuario usuario, String rolSolicitante) {
-        // 1. Seguridad: Solo un ADMIN puede crear usuarios
-        validarAdmin(rolSolicitante);
+    // --- Métodos CRUD  
+    public UserResponse buscarPorId(@NonNull Long id) {
+        log.info("Service: Buscando usuario con ID: {}", id);
+        Usuario user = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
 
-        // 2. Validación de correo duplicado
+        return convertToResponse(user);
+    }
+
+
+    public List<UserResponse> listarTodos() {
+        return usuarioRepository.findAll().stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    public UserResponse guardar(@Valid Usuario usuario, String rolSolicitante) {
+        validarAdmin(rolSolicitante);
         if (usuarioRepository.existsByEmail(usuario.getEmail())) {
-            log.warn("Service: Intento de registro con email duplicado: {}", usuario.getEmail());
             throw new DuplicateResourceException("El correo '" + usuario.getEmail() + "' ya existe.");
         }
-
-        log.info("Service: Registrando usuario '{}'", usuario.getNombreUsuario());
-        return usuarioRepository.save(usuario);
+        return convertToResponse(usuarioRepository.save(usuario));
     }
 
+    public UserResponse actualizar(@NonNull Long id, @Valid Usuario datos, String rol) {
+        validarAdmin(rol);
+        Usuario existente = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("ID " + id + " no existe."));
+
+        existente.setNombreUsuario(datos.getNombreUsuario());
+        existente.setEmail(datos.getEmail());
+        existente.setPassword(datos.getPassword());
+        existente.setRol(datos.getRol());
+
+        return convertToResponse(usuarioRepository.save(existente));
+    }
+
+    public void eliminar(@NonNull Long id, String rol) {
+        validarAdmin(rol);
+        if (!usuarioRepository.existsById(id)) {
+            throw new ResourceNotFoundException("ID " + id + " no encontrado.");
+        }
+        usuarioRepository.deleteById(id);
+    }
+
+    // --- Helpers de Ingeniería ---
     private void validarAdmin(String rol) {
         if (!"ADMIN".equalsIgnoreCase(rol)) {
-            throw new AccesoDenegadoException("No tienes permisos para gestionar usuarios.");
+            throw new AccesoDenegadoException("Acceso denegado: Se requiere rol ADMIN.");
         }
     }
 
-
-    public Usuario actualizar(@NonNull Long id, @Valid Usuario datosActualizados, String rolSolicitante) {
-        validarAdmin(rolSolicitante); // Solo ADMIN actualiza
-        
-        Usuario usuarioExistente = usuarioRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
-
-        // Validar si el nuevo email ya lo tiene otro usuario
-        if (!usuarioExistente.getEmail().equals(datosActualizados.getEmail()) && 
-            usuarioRepository.existsByEmail(datosActualizados.getEmail())) {
-            throw new DuplicateResourceException("El nuevo correo ya está en uso.");
-        }
-
-        usuarioExistente.setNombreUsuario(datosActualizados.getNombreUsuario());
-        usuarioExistente.setEmail(datosActualizados.getEmail());
-        usuarioExistente.setPassword(datosActualizados.getPassword());
-        usuarioExistente.setRol(datosActualizados.getRol());
-
-        log.info("Service: Actualizando usuario ID {}", id);
-        return usuarioRepository.save(usuarioExistente);
-    }
-
-    public void eliminar(@NonNull Long id, String rolSolicitante) {
-        validarAdmin(rolSolicitante); // Solo ADMIN elimina
-        
-        if (!usuarioRepository.existsById(id)) {
-            throw new ResourceNotFoundException("No se puede eliminar: ID " + id + " no existe.");
-        }
-        
-        log.info("Service: Eliminando usuario ID {}", id);
-        usuarioRepository.deleteById(id);
+    private UserResponse convertToResponse(Usuario u) {
+        return new UserResponse(u.getId(), u.getNombreUsuario(), u.getEmail(), u.getRol().name());
     }
 }
