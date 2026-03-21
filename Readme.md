@@ -12,38 +12,40 @@ Este proyecto es el segundo componente de grado ingeniería para la asignatura d
 ## 🛠️ Características Principales
 
 ### 1. Persistencia y Modelado de Datos
-El microservicio gestiona la tabla `USUARIOS` en la nube de Oracle. Utiliza una arquitectura de tres capas (Controller, Service, Repository) para garantizar que la lógica de negocio esté aislada de la persistencia.
+El microservicio gestiona la tabla `USUARIOS` en la nube de Oracle, utilizando una arquitectura de tres capas (Controller, Service, Repository). La columna primaria está estandarizada como `ID_USUARIO` para cumplir con las mejores prácticas de modelado de datos.
 
-### 2. Validaciones de Integridad (Bean Validation)
-* **Seguridad de Credenciales:** La contraseña cuenta con una restricción mínima de 8 caracteres mediante `@Size` para fomentar prácticas de seguridad básicas.
-* **Unicidad de Identidad:** Implementación de lógica `existsByEmail` y `existsByNombreUsuario` para prevenir cuentas duplicadas, arrojando errores controlados de tipo **409 Conflict**.
-* **Normalización de Roles:** Uso de un **Enum (`Rol.java`)** para asegurar que solo se acepten los valores `ADMIN` o `CLIENTE`, evitando errores de digitación en la base de datos.
+### 2. Privacidad por Diseño (Data Transfer Objects)
+Se implementaron patrones **DTO** para separar la capa de persistencia de la capa de presentación:
+* **`LoginRequest`**: Objeto especializado para recibir credenciales de forma segura.
+* **`UserResponse`**: Objeto de salida que **excluye la contraseña**, garantizando que los datos sensibles nunca abandonen el perímetro del microservicio en las respuestas JSON.
 
-### 3. Seguridad y Control de Acceso (RBAC)
-Se implementa un control de acceso basado en roles (Role-Based Access Control) mediante parámetros de consulta en el `Service`:
-* **ADMIN:** Único rol autorizado para realizar operaciones de escritura (`POST`), edición (`PUT`) y eliminación (`DELETE`).
-* **CLIENTE:** Rol con permisos restringidos únicamente a la consulta de información.
+### 3. Validaciones de Integridad y Roles
+* **Seguridad de Credenciales**: Validación mediante `@Size` para asegurar claves de al menos 8 caracteres.
+* **Normalización de Roles**: Uso del Enum **`Rol.java`** (`ADMIN`, `CLIENTE`) con la anotación `@Enumerated(EnumType.STRING)` para evitar inconsistencias en la base de datos.
 
 ## 📑 API Endpoints y Códigos de Respuesta
 
 | Método | Endpoint | Descripción | Código Éxito |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/api/usuarios` | Lista todos los usuarios registrados | 200 OK |
+| **POST** | `/api/usuarios/login` | **Autenticación**: Inicia sesión con email y password | 200 OK |
+| **GET** | `/api/usuarios` | Lista todos los usuarios (Formato `UserResponse`) | 200 OK |
+| **GET** | `/api/usuarios/{id}` | Busca un usuario específico por su ID único | 200 OK |
 | **POST** | `/api/usuarios` | Registra un nuevo usuario (Requiere `?rol=ADMIN`) | 201 Created |
 | **PUT** | `/api/usuarios/{id}` | Actualiza datos de un usuario (Requiere `?rol=ADMIN`) | 200 OK |
 | **DELETE**| `/api/usuarios/{id}`| Elimina físicamente un usuario (Requiere `?rol=ADMIN`)| 204 No Content |
 
 ### Manejo de Errores Estandarizado
-Al igual que el microservicio de productos, este sistema utiliza un `GlobalExceptionHandler` para garantizar respuestas consistentes:
-* **400 Bad Request:** Formato de email inválido o contraseña demasiado corta.
-* **403 Forbidden:** Un usuario con rol `CLIENTE` intentando crear o borrar otros usuarios.
-* **404 Not Found:** Intento de actualización o borrado de un ID que no existe en Oracle Cloud.
-* **409 Conflict:** El correo electrónico ya se encuentra registrado en el sistema.
+Se utiliza un `GlobalExceptionHandler` para garantizar respuestas consistentes:
+* **400 Bad Request**: Fallo en validaciones de formato (email inválido o password corta).
+* **403 Forbidden**: Intento de gestión administrativa con rol de `CLIENTE`.
+* **404 Not Found**: El recurso solicitado no existe en Oracle Cloud.
+* **409 Conflict**: El correo electrónico o nombre de usuario ya se encuentran registrados.
 
 ## 🧪 Pruebas con Postman
-Se adjunta una colección de Postman para el puerto **8082** que incluye:
-1. **Carga Inicial:** Creación de 3 usuarios (Admin, Cliente, Soporte).
-2. **Ciclo de Vida:** Pruebas de actualización de perfil y eliminación con respuesta **204 No Content**.
-3. **Escenarios de Falla:** Validación de denegación de acceso y detección de emails duplicados.
+La colección adjunta para el puerto **8082** permite validar el flujo completo de identidad:
+1. **Flujo de Acceso**: Prueba del endpoint de login con respuesta segura (sin contraseña).
+2. **Ciclo CRUD**: Creación de los **3 usuarios mínimos** exigidos por la pauta.
+3. **Validación de Identidad**: Búsqueda individual por ID para verificar la integridad de la información en la nube.
+4. **Seguridad RBAC**: Intento de eliminación fallido para validar el control de acceso basado en roles[cite: 25].
 
 ---
