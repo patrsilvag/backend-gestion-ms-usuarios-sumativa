@@ -1,22 +1,25 @@
 package com.example.usuarios.services;
 
-import com.example.usuarios.models.Usuario;
-import com.example.usuarios.dto.*;
-import com.example.usuarios.repositories.UsuarioRepository;
-import com.example.usuarios.exceptions.*;
-import lombok.extern.slf4j.Slf4j;
-import lombok.NonNull;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.example.usuarios.dto.LoginRequest;
+import com.example.usuarios.dto.UserResponse;
+import com.example.usuarios.exceptions.AccesoDenegadoException;
+import com.example.usuarios.exceptions.DuplicateResourceException;
+import com.example.usuarios.exceptions.ResourceNotFoundException;
+import com.example.usuarios.models.Usuario;
+import com.example.usuarios.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
 @Validated
-@SuppressWarnings({ "null", "all" })
+@SuppressWarnings({"null", "all"})
 public class UsuarioService {
 
     @Autowired
@@ -34,32 +37,32 @@ public class UsuarioService {
         return convertToResponse(user);
     }
 
-    // --- Métodos CRUD  
+    // --- Métodos CRUD
     public UserResponse buscarPorId(@NonNull Long id) {
         log.info("Service: Buscando usuario con ID: {}", id);
-        Usuario user = usuarioRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
+        Usuario user = usuarioRepository.findById(id).orElseThrow(
+                () -> new ResourceNotFoundException("Usuario no encontrado con ID: " + id));
 
         return convertToResponse(user);
     }
 
 
     public List<UserResponse> listarTodos() {
-        return usuarioRepository.findAll().stream()
-                .map(this::convertToResponse)
+        return usuarioRepository.findAll().stream().map(this::convertToResponse)
                 .collect(Collectors.toList());
     }
 
     public UserResponse guardar(@Valid Usuario usuario, String rolSolicitante) {
-        validarAdmin(rolSolicitante);
+    
         if (usuarioRepository.existsByEmail(usuario.getEmail())) {
-            throw new DuplicateResourceException("El correo '" + usuario.getEmail() + "' ya existe.");
+            throw new DuplicateResourceException(
+                    "El correo '" + usuario.getEmail() + "' ya existe.");
         }
         return convertToResponse(usuarioRepository.save(usuario));
     }
 
     public UserResponse actualizar(@NonNull Long id, @Valid Usuario datos, String rol) {
-        validarAdmin(rol);
+        
         Usuario existente = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("ID " + id + " no existe."));
 

@@ -9,6 +9,10 @@ WORKDIR /app
 # Renombramos el archivo a "app.jar" para que sea más fácil de manejar
 COPY target/*.jar app.jar
 
+# COPIAMOS TU WALLET AL CONTENEDOR (Asegúrate de estar en la carpeta del backend)
+# Asumimos que la carpeta 'wallets' está accesible o la copias a la carpeta del proyecto
+COPY wallets /app/wallets
+
 # 4. Exponemos el puerto de tu backend
 EXPOSE 8082
 
