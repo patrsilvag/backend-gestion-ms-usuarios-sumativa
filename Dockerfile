@@ -12,5 +12,5 @@ COPY target/*.jar app.jar
 # 4. Exponemos el puerto de tu backend
 EXPOSE 8082
 
-# 5. El comando que encenderá Spring Boot cuando arranque el contenedor
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Se activa el perfil "docker" para usar application-docker.properties
+ENTRYPOINT ["java", "-Dspring.profiles.active=docker", "-jar", "app.jar"]
