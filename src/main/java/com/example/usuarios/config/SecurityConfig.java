@@ -17,6 +17,11 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable()) // Necesario para que Docker y Angular puedan hacer POST
                 .cors(Customizer.withDefaults()) // Activa la configuración de CORS que ya tienes
                 .authorizeHttpRequests(auth -> auth
+                       
+                        // 1. PRIMERO: Permitir explícitamente el GET a la lista
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/**").permitAll()
+
                         // PERMITIR registro de nuevos usuarios (POST a /api/usuarios)
                         .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").permitAll()
