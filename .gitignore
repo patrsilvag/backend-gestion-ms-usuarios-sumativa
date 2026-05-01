@@ -32,4 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+# Docker
+.docker/
+
+wallets/
+
 application-dev.properties
