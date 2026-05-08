@@ -2,12 +2,14 @@ package com.example.usuarios.exceptions;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import java.time.LocalDateTime;
+import lombok.NoArgsConstructor;
+import java.util.Date; // Coincidencia exacta con el Handler
 
 @Data
+@NoArgsConstructor
 @AllArgsConstructor
-public class ErrorDetails { // Nombre exacto de la pauta
-    private LocalDateTime timestamp; // Fecha/hora
-    private String message; // Mensaje
-    private String details; // Detalle (URL u otro)
+public class ErrorDetails {
+    private Date timestamp;
+    private String message;
+    private String details;
 }

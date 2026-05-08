@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy; // <--- ESTE ES EL IMPORT QUE
+                                                                       // FALTABA
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.Customizer;
 
@@ -12,25 +14,25 @@ import org.springframework.security.config.Customizer;
 @EnableWebSecurity
 public class SecurityConfig {
 
+    // Definimos la constante al inicio de la clase para evitar duplicados en SonarQube
+    private static final String USUARIOS_PATH_WILDCARD = "/api/usuarios/**";
+    private static final String USUARIOS_BASE_PATH = "/api/usuarios";
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable()) // Necesario para que Docker y Angular puedan hacer POST
-                .cors(Customizer.withDefaults()) // Activa la configuración de CORS que ya tienes
-                .authorizeHttpRequests(auth -> auth
-                       
-                        // 1. PRIMERO: Permitir explícitamente el GET a la lista
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios/**").permitAll()
-
-                        // PERMITIR registro de nuevos usuarios (POST a /api/usuarios)
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").permitAll()
-                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").permitAll()
-                        // PERMITIR el login
+        http.csrf(csrf -> csrf.disable()) // Deshabilitado para APIs Stateless (JWT)
+                .cors(Customizer.withDefaults()).authorizeHttpRequests(auth -> auth
+                        // Uso de constantes para mayor mantenibilidad
+                        .requestMatchers(HttpMethod.GET, USUARIOS_PATH_WILDCARD).permitAll()
+                        .requestMatchers(HttpMethod.POST, USUARIOS_BASE_PATH).permitAll()
                         .requestMatchers("/api/usuarios/login").permitAll()
-                        // Cualquier otra ruta requiere autenticación
+                        .requestMatchers(HttpMethod.PUT, USUARIOS_PATH_WILDCARD).permitAll()
+                        .requestMatchers(HttpMethod.DELETE, USUARIOS_PATH_WILDCARD).authenticated()
                         .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults()); // Permite autenticación básica por si la
-                                                       // necesitas
+                .sessionManagement(session ->
+                // Define que no se crearán sesiones en el servidor (Arquitectura Stateless)
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .httpBasic(Customizer.withDefaults());
 
         return http.build();
     }
