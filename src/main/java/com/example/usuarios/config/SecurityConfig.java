@@ -5,35 +5,55 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.http.SessionCreationPolicy; // <--- ESTE ES EL IMPORT QUE
-                                                                       // FALTABA
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.config.Customizer;
+
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Definimos la constante al inicio de la clase para evitar duplicados en SonarQube
-    private static final String USUARIOS_PATH_WILDCARD = "/api/usuarios/**";
-    private static final String USUARIOS_BASE_PATH = "/api/usuarios";
-
+    
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(csrf -> csrf.disable()) // Deshabilitado para APIs Stateless (JWT)
-                .cors(Customizer.withDefaults()).authorizeHttpRequests(auth -> auth
-                        // Uso de constantes para mayor mantenibilidad
-                        .requestMatchers(HttpMethod.GET, USUARIOS_PATH_WILDCARD).permitAll()
-                        .requestMatchers(HttpMethod.POST, USUARIOS_BASE_PATH).permitAll()
-                        .requestMatchers("/api/usuarios/login").permitAll()
-                        .requestMatchers(HttpMethod.PUT, USUARIOS_PATH_WILDCARD).permitAll()
-                        .requestMatchers(HttpMethod.DELETE, USUARIOS_PATH_WILDCARD).authenticated()
+        http.csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        // 1. Permitir el pre-flight (IMPORTANTE para PUT)
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // 2. Permitir el PUT específicamente para anónimos
+                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").permitAll()
+
+                        // 3. El resto de las rutas que ya tenías
+                        .requestMatchers("/api/usuarios/login", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios/**").permitAll()
+
                         .anyRequest().authenticated())
-                .sessionManagement(session ->
-                // Define que no se crearán sesiones en el servidor (Arquitectura Stateless)
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .httpBasic(Customizer.withDefaults());
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
+    }
+
+    // 3. BEAN DE CONFIGURACIÓN DE CORS (Indispensable para Docker)
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost", "http://localhost:4200"));
+        // 👈 3. Asegúrate de que PUT esté en esta lista
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
