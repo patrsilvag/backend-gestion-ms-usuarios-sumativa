@@ -18,7 +18,9 @@ import java.util.Arrays;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    
+    // Definimos la constante una sola vez
+    private static final String USUARIOS_PATH_WILDCARD = "/api/usuarios/**";
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
@@ -28,12 +30,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                         // 2. Permitir el PUT específicamente para anónimos
-                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").permitAll()
+                        .requestMatchers(HttpMethod.PUT,USUARIOS_PATH_WILDCARD).permitAll()
 
                         // 3. El resto de las rutas que ya tenías
                         .requestMatchers("/api/usuarios/login", "/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/usuarios/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, USUARIOS_PATH_WILDCARD).permitAll()
+                        .requestMatchers(HttpMethod.POST, USUARIOS_PATH_WILDCARD).permitAll()
 
                         .anyRequest().authenticated())
                 .sessionManagement(
