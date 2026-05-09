@@ -35,6 +35,8 @@ build/
 # Docker
 .docker/
 
-wallets/
+**/wallets/
+**/target/
+*.jar
 
 application-dev.properties
