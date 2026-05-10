@@ -151,4 +151,29 @@ class UsuarioControllerTest {
         mockMvc.perform(delete("/api/usuarios/1").param("rol", "USER"))
                 .andExpect(status().isForbidden()); // Status 403
     }
+
+    @Test
+    void testCrearUsuario_ErrorValidacion() throws Exception {
+    String jsonInvalido = "{\"nombre\":\"\", \"email\":\"no-es-email\", \"password\":\"\"}";
+
+    mockMvc.perform(post("/api/usuarios")
+            .param("rol", "ADMIN")
+            // ✅ Casting explícito para satisfacer al analizador de nulos
+            .contentType((org.springframework.http.MediaType) MediaType.APPLICATION_JSON)
+            .content(jsonInvalido))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Error de validación")));
+}
+
+    @Test
+    void testErrorInesperado_500() throws Exception {
+        // Forzamos un RuntimeException genérico
+        when(usuarioService.listarTodos())
+                .thenThrow(new RuntimeException("Error de base de datos"));
+
+        mockMvc.perform(get("/api/usuarios")).andExpect(status().isInternalServerError()) // Espera
+                                                                                          // 500
+                .andExpect(
+                        jsonPath("$.message").value("Ocurrió un error inesperado en el servidor"));
+    }
 }

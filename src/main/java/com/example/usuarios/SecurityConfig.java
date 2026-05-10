@@ -1,4 +1,4 @@
-package com.example.usuarios.config;
+package com.example.usuarios;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -6,37 +6,39 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
-
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Definimos la constante una sola vez
+    public SecurityConfig() {
+        System.out.println("⚠️ CONFIGURACIÓN DE SEGURIDAD CARGADA EXITOSAMENTE ⚠️");
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService() {
+        // Esto crea un gestor de usuarios vacío para que Spring deje de generar la clave aleatoria
+        return new InMemoryUserDetailsManager();
+    }    
+
     private static final String USUARIOS_PATH_WILDCARD = "/api/usuarios/**";
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(auth -> auth
-                        // 1. Permitir el pre-flight (IMPORTANTE para PUT)
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // 2. Permitir el PUT específicamente para anónimos
-                        .requestMatchers(HttpMethod.PUT,USUARIOS_PATH_WILDCARD).permitAll()
-
-                        // 3. El resto de las rutas que ya tenías
-                        .requestMatchers("/api/usuarios/login", "/error").permitAll()
+                .authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**")
+                        .permitAll().requestMatchers(HttpMethod.PUT, USUARIOS_PATH_WILDCARD)
+                        .permitAll().requestMatchers("/api/usuarios/login", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET, USUARIOS_PATH_WILDCARD).permitAll()
                         .requestMatchers(HttpMethod.POST, USUARIOS_PATH_WILDCARD).permitAll()
-
                         .anyRequest().authenticated())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
@@ -44,12 +46,12 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 3. BEAN DE CONFIGURACIÓN DE CORS (Indispensable para Docker)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost", "http://localhost:4200"));
-        // 👈 3. Asegúrate de que PUT esté en esta lista
+        // ✅ Se añade el dominio del entorno Docker
+        configuration.setAllowedOrigins(
+                Arrays.asList("http://mi-app-docker", "http://localhost", "http://localhost:4200"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
         configuration.setAllowCredentials(true);

@@ -17,25 +17,42 @@ import com.example.usuarios.repositories.UsuarioRepository;
 import jakarta.validation.Valid;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
 @Validated
+@Transactional
 @SuppressWarnings({"all"})
 public class UsuarioService {
 
     @Autowired
     private UsuarioRepository usuarioRepository;
 
-    // --- Lógica de Login (Requerimiento #30) ---
     public UserResponse login(@Valid LoginRequest request) {
-        log.info("Service: Intento de login para {}", request.getEmail());
-        Usuario user = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AccesoDenegadoException("Credenciales incorrectas"));
 
-        if (!user.getPassword().equals(request.getPassword())) {
-            throw new AccesoDenegadoException("Credenciales incorrectas");
+        System.out.println("DEBUG: Entrando al login con email: " + request.getEmail());
+        
+        // 1. Limpieza de datos (Oracle es sensible a espacios y mayúsculas)
+        String emailBusqueda = request.getEmail().trim();
+
+        log.info("### DIAGNÓSTICO LOGIN ###");
+        log.info("Buscando email: [{}]", emailBusqueda);
+
+        Usuario user = usuarioRepository.findByEmail(emailBusqueda).orElseThrow(() -> {
+            log.error("ERROR: El email [{}] no se encontró en la tabla USUARIOS", emailBusqueda);
+            return new AccesoDenegadoException("Email no encontrado");
+        });
+
+        log.info("Usuario encontrado en DB: {}", user.getEmail());
+        log.info("Comparando Clave Recibida: [{}] vs Clave en DB: [{}]", request.getPassword(),
+                user.getPassword());
+
+        if (!user.getPassword().equals(request.getPassword().trim())) {
+            log.error("ERROR: La contraseña no coincide para el usuario {}", emailBusqueda);
+            throw new AccesoDenegadoException("Password incorrecta");
         }
+
         return convertToResponse(user);
     }
 
@@ -60,16 +77,27 @@ public class UsuarioService {
                     "El correo '" + request.getEmail() + "' ya existe.");
         }
 
+        log.info("🔥 [GUARDAR] INICIO - email={}", request.getEmail());
+
         Usuario usuario = new Usuario();
         usuario.setNombreUsuario(request.getNombreUsuario());
         usuario.setEmail(request.getEmail());
         usuario.setPassword(request.getPassword());
 
+       
+
         // Priorizamos el rol que viene por parámetro o el del DTO
         String rolFinal = (rolSolicitante != null) ? rolSolicitante : request.getRol();
         usuario.setRol(Rol.valueOf(rolFinal.toUpperCase()));
+        
+        log.info("👉 [GUARDAR] ANTES DE SAVE - usuario={}", usuario);
+        
+        Usuario saved = usuarioRepository.save(usuario);
 
-        return convertToResponse(usuarioRepository.save(usuario));
+        log.info("✅ [GUARDAR] DESPUÉS DE SAVE - id={}", saved.getId());
+
+        return convertToResponse(saved);
+        
     }
 
     // Cambiamos a UserRequest para Rating A en Seguridad y Fiabilidad
